@@ -19,7 +19,10 @@ func NewMessageRepository(db *gorm.DB) MessageRepository {
 }
 
 func (r *messageRepository) Create(message *model.Message) error {
-	return r.db.Create(message).Error
+	if err := r.db.Create(message).Error; err != nil {
+		return err
+	}
+	return r.db.Preload("Sender").First(message, message.ID).Error
 }
 
 func (r *messageRepository) FindByRoomID(roomID uint) ([]model.Message, error) {

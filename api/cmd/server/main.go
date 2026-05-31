@@ -2,6 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
@@ -11,6 +16,7 @@ import (
 	"github.com/prachotx/real-time-chat/api/internal/model"
 	"github.com/prachotx/real-time-chat/api/internal/repository"
 	"github.com/prachotx/real-time-chat/api/internal/service"
+	internalws "github.com/prachotx/real-time-chat/api/internal/ws"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -59,6 +65,10 @@ func main() {
 	messageService := service.NewMessageService(messageRepo)
 	messageHandler := handler.NewMessageHandler(messageService)
 
+	hub := internalws.NewHub()
+	go hub.Run()
+	wsHandler := handler.NewWsHandler(hub, messageService)
+
 	api := app.Group("/api")
 	{
 		auth := api.Group("/auth")
@@ -73,8 +83,36 @@ func main() {
 			room.Get("/", middleware.AuthMiddleware, roomHandler.FindAll)
 			room.Post("/:id/messages", middleware.AuthMiddleware, messageHandler.Create)
 			room.Get("/:id/messages", middleware.AuthMiddleware, messageHandler.FindByRoomID)
+			room.Get("/:id/online-users", middleware.AuthMiddleware, wsHandler.GetOnlineUsers)
 		}
 	}
 
-	app.Listen(":" + cfg.Port)
+	app.Get("/ws/:room_id", middleware.AuthMiddleware, wsHandler.Handle)
+
+	// เริ่ม server ใน goroutine แยก เพื่อให้ main goroutine รอ signal ได้
+	go func() {
+		if err := app.Listen(":" + cfg.Port); err != nil {
+			log.Printf("server stopped: %v", err)
+		}
+	}()
+
+	// รอ SIGINT (Ctrl+C) หรือ SIGTERM (docker stop / k8s)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("shutting down...")
+
+	// หยุดรับ request ใหม่ และรอให้ request ที่ค้างอยู่เสร็จก่อน (max 5 วิ)
+	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
+		log.Fatalf("forced shutdown: %v", err)
+	}
+
+	// ปิด DB connection pool
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
+
+	log.Println("server exited cleanly")
 }

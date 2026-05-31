@@ -8,6 +8,7 @@ import (
 
 type MessageService interface {
 	Create(input dto.CreateMessageDto, roomID uint, userID uint) error
+	Save(input dto.CreateMessageDto, roomID uint, userID uint) (dto.MessageResponse, error)
 	FindByRoomID(roomID uint) ([]dto.MessageResponse, error)
 }
 
@@ -27,6 +28,31 @@ func (s *messageService) Create(input dto.CreateMessageDto, roomID uint, userID 
 	}
 
 	return s.messageRepo.Create(&message)
+}
+
+func (s *messageService) Save(input dto.CreateMessageDto, roomID uint, userID uint) (dto.MessageResponse, error) {
+	message := model.Message{
+		Content:  input.Content,
+		RoomID:   roomID,
+		SenderID: userID,
+	}
+
+	if err := s.messageRepo.Create(&message); err != nil {
+		return dto.MessageResponse{}, err
+	}
+
+	return dto.MessageResponse{
+		ID:        message.ID,
+		CreatedAt: message.CreatedAt.String(),
+		Content:   message.Content,
+		RoomID:    message.RoomID,
+		SenderID:  message.SenderID,
+		Sender: dto.UserResponse{
+			ID:       message.Sender.ID,
+			Username: message.Sender.Username,
+			Email:    message.Sender.Email,
+		},
+	}, nil
 }
 
 func (s *messageService) FindByRoomID(roomID uint) ([]dto.MessageResponse, error) {
