@@ -89,26 +89,22 @@ func main() {
 
 	app.Get("/ws/:room_id", middleware.AuthMiddleware, wsHandler.Handle)
 
-	// เริ่ม server ใน goroutine แยก เพื่อให้ main goroutine รอ signal ได้
 	go func() {
 		if err := app.Listen(":" + cfg.Port); err != nil {
 			log.Printf("server stopped: %v", err)
 		}
 	}()
 
-	// รอ SIGINT (Ctrl+C) หรือ SIGTERM (docker stop / k8s)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("shutting down...")
 
-	// หยุดรับ request ใหม่ และรอให้ request ที่ค้างอยู่เสร็จก่อน (max 5 วิ)
 	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
 		log.Fatalf("forced shutdown: %v", err)
 	}
 
-	// ปิด DB connection pool
 	sqlDB, err := db.DB()
 	if err == nil {
 		sqlDB.Close()
