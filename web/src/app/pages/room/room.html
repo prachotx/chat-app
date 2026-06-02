@@ -1,0 +1,16 @@
+<p>connected: {{ isConnected() }} | online: {{ onlineUserIds() | json }}</p>
+
+@if (isLoadingHistory()) {
+  <p>Loading messages...</p>
+} @else {
+  <ul>
+    @for (msg of messages(); track msg.id) {
+      <li>[{{ msg.sender.username }}] {{ msg.content }}</li>
+    }
+  </ul>
+}
+
+<form (ngSubmit)="sendMessage()">
+  <input [(ngModel)]="draft" name="draft" placeholder="Type a message..." />
+  <button type="submit" [disabled]="!isConnected()">Send</button>
+</form>

@@ -1,0 +1,103 @@
+<main class="min-h-screen flex items-center justify-center bg-base-200 px-4">
+  <div class="card w-full max-w-sm bg-base-100 shadow-xl">
+    <div class="card-body gap-4">
+      <div class="text-center">
+        <h1 class="text-2xl font-bold">Create account</h1>
+        <p class="text-base-content/60 text-sm mt-1">Start chatting in seconds</p>
+      </div>
+
+      @if (error()) {
+        <div role="alert" class="alert alert-error text-sm py-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="form-control">
+          <label class="label pb-1" for="username">
+            <span class="label-text font-medium">Username</span>
+          </label>
+          <input
+            id="username"
+            type="text"
+            class="input input-bordered w-full"
+            [class.input-error]="form.controls.username.invalid && form.controls.username.touched"
+            formControlName="username"
+            autocomplete="username"
+            placeholder="johndoe"
+            aria-describedby="username-error"
+          />
+          @if (form.controls.username.touched && form.controls.username.errors?.['required']) {
+            <p id="username-error" class="text-error text-xs mt-1" role="alert">Username is required.</p>
+          }
+        </div>
+
+        <div class="form-control mt-3">
+          <label class="label pb-1" for="email">
+            <span class="label-text font-medium">Email</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            class="input input-bordered w-full"
+            [class.input-error]="form.controls.email.invalid && form.controls.email.touched"
+            formControlName="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+            aria-describedby="email-error"
+          />
+          @if (form.controls.email.touched) {
+            @if (form.controls.email.errors?.['required']) {
+              <p id="email-error" class="text-error text-xs mt-1" role="alert">Email is required.</p>
+            } @else if (form.controls.email.errors?.['email']) {
+              <p id="email-error" class="text-error text-xs mt-1" role="alert">Enter a valid email address.</p>
+            }
+          }
+        </div>
+
+        <div class="form-control mt-3">
+          <label class="label pb-1" for="password">
+            <span class="label-text font-medium">Password</span>
+          </label>
+          <input
+            id="password"
+            type="password"
+            class="input input-bordered w-full"
+            [class.input-error]="form.controls.password.invalid && form.controls.password.touched"
+            formControlName="password"
+            autocomplete="new-password"
+            placeholder="••••••••"
+            aria-describedby="password-error"
+          />
+          @if (form.controls.password.touched) {
+            @if (form.controls.password.errors?.['required']) {
+              <p id="password-error" class="text-error text-xs mt-1" role="alert">Password is required.</p>
+            } @else if (form.controls.password.errors?.['minlength']) {
+              <p id="password-error" class="text-error text-xs mt-1" role="alert">Password must be at least 8 characters.</p>
+            }
+          }
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-full mt-6"
+          [disabled]="isLoading()"
+          [attr.aria-busy]="isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+          }
+          Create account
+        </button>
+      </form>
+
+      <p class="text-center text-sm text-base-content/70">
+        Already have an account?
+        <a routerLink="/login" class="link link-primary font-medium">Sign in</a>
+      </p>
+    </div>
+  </div>
+</main>

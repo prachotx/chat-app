@@ -2,12 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
+	"github.com/fasthttp/websocket"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/prachotx/real-time-chat/api/config"
@@ -16,7 +12,7 @@ import (
 	"github.com/prachotx/real-time-chat/api/internal/model"
 	"github.com/prachotx/real-time-chat/api/internal/repository"
 	"github.com/prachotx/real-time-chat/api/internal/service"
-	internalws "github.com/prachotx/real-time-chat/api/internal/ws"
+	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -65,10 +61,6 @@ func main() {
 	messageService := service.NewMessageService(messageRepo)
 	messageHandler := handler.NewMessageHandler(messageService)
 
-	hub := internalws.NewHub()
-	go hub.Run()
-	wsHandler := handler.NewWsHandler(hub, messageService)
-
 	api := app.Group("/api")
 	{
 		auth := api.Group("/auth")
@@ -83,32 +75,27 @@ func main() {
 			room.Get("/", middleware.AuthMiddleware, roomHandler.FindAll)
 			room.Post("/:id/messages", middleware.AuthMiddleware, messageHandler.Create)
 			room.Get("/:id/messages", middleware.AuthMiddleware, messageHandler.FindByRoomID)
-			room.Get("/:id/online-users", middleware.AuthMiddleware, wsHandler.GetOnlineUsers)
 		}
 	}
 
-	app.Get("/ws/:room_id", middleware.AuthMiddleware, wsHandler.Handle)
-
-	go func() {
-		if err := app.Listen(":" + cfg.Port); err != nil {
-			log.Printf("server stopped: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("shutting down...")
-
-	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
-		log.Fatalf("forced shutdown: %v", err)
+	upgrader := websocket.FastHTTPUpgrader{
+		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool { return true },
 	}
 
-	sqlDB, err := db.DB()
-	if err == nil {
-		sqlDB.Close()
-	}
+	app.Get("/ws/:roomId", func(c fiber.Ctx) error {
+		roomId := c.Params("roomId")
+		return upgrader.Upgrade(c.RequestCtx(), func(conn *websocket.Conn) {
+			fmt.Printf("Connected: %s (room=%s)\n", conn.RemoteAddr(), roomId)
+			defer fmt.Printf("Disconnected: %s (room=%s)\n", conn.RemoteAddr(), roomId)
 
-	log.Println("server exited cleanly")
+			for {
+				_, _, err := conn.ReadMessage()
+				if err != nil {
+					break
+				}
+			}
+		})
+	})
+
+	app.Listen(":" + cfg.Port)
 }

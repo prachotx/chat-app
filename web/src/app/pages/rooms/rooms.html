@@ -1,0 +1,126 @@
+<div class="min-h-screen bg-base-200 flex flex-col">
+  <!-- Navbar -->
+  <header class="navbar bg-base-100 shadow-sm px-4">
+    <div class="flex-1">
+      <span class="text-xl font-bold">ChatApp</span>
+    </div>
+    <div class="flex-none gap-2 items-center">
+      @if (currentUser()) {
+        <span class="text-sm text-base-content/70 hidden sm:inline">
+          {{ currentUser()!.username }}
+        </span>
+      }
+      <button class="btn btn-ghost btn-sm" (click)="logout()" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 container mx-auto max-w-3xl px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">Rooms</h2>
+      <button class="btn btn-primary btn-sm" (click)="openCreateModal()" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New room
+      </button>
+    </div>
+
+    @if (isLoadingRooms()) {
+      <div class="flex justify-center py-16" role="status" aria-label="Loading rooms">
+        <span class="loading loading-spinner loading-lg"></span>
+      </div>
+    } @else if (rooms().length === 0) {
+      <div class="text-center py-16 text-base-content/50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        <p class="font-medium">No rooms yet</p>
+        <p class="text-sm mt-1">Create a room to start chatting</p>
+      </div>
+    } @else {
+      <ul class="flex flex-col gap-2" role="list" aria-label="Chat rooms">
+        @for (room of rooms(); track room.id) {
+          <a routerLink="/rooms/{{ room.id }}">
+            <li class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer" role="listitem">
+            <div class="card-body py-4 px-5 flex-row items-center justify-between">
+              <div>
+                <h3 class="font-semibold">{{ room.name }}</h3>
+                <p class="text-xs text-base-content/50 mt-0.5">Created by {{ room.created_by.username }}</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </li>
+          </a>
+        }
+      </ul>
+    }
+  </main>
+</div>
+
+<!-- Create Room Modal -->
+@if (showCreateModal()) {
+  <div
+    class="modal modal-open"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="create-room-title"
+    (keydown.escape)="closeCreateModal()"
+  >
+    <div class="modal-box">
+      <h3 id="create-room-title" class="font-bold text-lg">Create a new room</h3>
+
+      @if (createError()) {
+        <div role="alert" class="alert alert-error text-sm py-2 mt-3">
+          <span>{{ createError() }}</span>
+        </div>
+      }
+
+      <form [formGroup]="createForm" (ngSubmit)="createRoom()" novalidate class="mt-4">
+        <div class="form-control">
+          <label class="label pb-1" for="room-name">
+            <span class="label-text font-medium">Room name</span>
+          </label>
+          <input
+            id="room-name"
+            type="text"
+            class="input input-bordered w-full"
+            [class.input-error]="createForm.controls.name.invalid && createForm.controls.name.touched"
+            formControlName="name"
+            placeholder="e.g. general"
+            autocomplete="off"
+            aria-describedby="room-name-error"
+          />
+          @if (createForm.controls.name.touched && createForm.controls.name.errors?.['required']) {
+            <p id="room-name-error" class="text-error text-xs mt-1" role="alert">Room name is required.</p>
+          }
+        </div>
+
+        <div class="modal-action mt-6">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            (click)="closeCreateModal()"
+            [disabled]="isCreating()"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="isCreating()"
+            [attr.aria-busy]="isCreating()"
+          >
+            @if (isCreating()) {
+              <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+            }
+            Create
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" (click)="closeCreateModal()" aria-hidden="true"></div>
+  </div>
+}
