@@ -1,7 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { JsonPipe } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { MessageService, MessageResponse } from '../../core/services/message.service';
 
 type WsEventType = 'message' | 'user_joined' | 'user_left' | 'online_users';
@@ -21,23 +32,35 @@ interface OnlineUsersData {
 
 @Component({
   selector: 'app-room',
-  imports: [FormsModule, JsonPipe],
+  imports: [FormsModule, RouterLink],
   templateUrl: './room.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RoomComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly messageService = inject(MessageService);
+  private readonly authService = inject(AuthService);
 
   private ws: WebSocket | null = null;
-  private roomId!: number;
+  protected roomId!: number;
+  private readonly messagesEnd = viewChild<ElementRef<HTMLElement>>('messagesEnd');
 
   readonly messages = signal<MessageResponse[]>([]);
   readonly onlineUserIds = signal<number[]>([]);
   readonly isConnected = signal(false);
   readonly isLoadingHistory = signal(true);
+  readonly currentUserId = computed(() => this.authService.currentUser()?.id);
 
   draft = '';
+
+  constructor() {
+    effect(() => {
+      this.messages();
+      Promise.resolve().then(() => {
+        this.messagesEnd()?.nativeElement.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }
 
   ngOnInit() {
     this.roomId = Number(this.route.snapshot.paramMap.get('id'));
