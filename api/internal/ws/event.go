@@ -1,20 +1,32 @@
-package hub
+package ws
 
-import (
-	"encoding/json"
+import "encoding/json"
 
-	"github.com/prachotx/real-time-chat/api/internal/dto"
-)
-
-type IncomingMessage struct {
-	Content string `json:"content"`
-}
-
-type Event struct {
+type WSEvent struct {
 	Type string `json:"type"`
 	Data any    `json:"data,omitempty"`
 }
 
-func NewMessageEvent(msg dto.MessageResponse) ([]byte, error) {
-	return json.Marshal(Event{Type: "message", Data: msg})
+const (
+	EventMessage     = "message"
+	EventUserJoined  = "user_joined"
+	EventUserLeft    = "user_left"
+	EventOnlineUsers = "online_users"
+)
+
+type userStatusData struct {
+	UserID uint `json:"user_id"`
+}
+
+type onlineUsersData struct {
+	UserIDs []uint `json:"user_ids"`
+}
+
+func marshalEvent(eventType string, data any) []byte {
+	b, _ := json.Marshal(WSEvent{Type: eventType, Data: data})
+	return b
+}
+
+func MarshalEvent(eventType string, data any) ([]byte, error) {
+	return json.Marshal(WSEvent{Type: eventType, Data: data})
 }

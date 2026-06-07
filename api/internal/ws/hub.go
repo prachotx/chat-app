@@ -1,67 +1,100 @@
-package hub
+package ws
 
-import (
-	"sync"
-
-	"github.com/fasthttp/websocket"
-)
-
-type Client struct {
-	Conn   *websocket.Conn
-	UserID uint
-	mu     sync.Mutex
+type broadcastMsg struct {
+	roomID  uint
+	payload []byte
 }
 
-// Write is safe to call from multiple goroutines.
-func (cl *Client) Write(messageType int, data []byte) error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
-	return cl.Conn.WriteMessage(messageType, data)
+type onlineUsersRequest struct {
+	roomID uint
+	resp   chan []uint
 }
 
 type Hub struct {
-	mu    sync.RWMutex
-	rooms map[string]map[*Client]bool
+	rooms          map[uint]map[*Client]bool
+	onlineUsers    map[uint]map[uint]int
+	Register       chan *Client
+	Unregister     chan *Client
+	broadcast      chan broadcastMsg
+	onlineUsersReq chan onlineUsersRequest
 }
 
-func New() *Hub {
+func NewHub() *Hub {
 	return &Hub{
-		rooms: make(map[string]map[*Client]bool),
+		rooms:          make(map[uint]map[*Client]bool),
+		onlineUsers:    make(map[uint]map[uint]int),
+		Register:       make(chan *Client),
+		Unregister:     make(chan *Client),
+		broadcast:      make(chan broadcastMsg, 256),
+		onlineUsersReq: make(chan onlineUsersRequest),
 	}
 }
 
-func (h *Hub) Register(roomID string, cl *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.rooms[roomID] == nil {
-		h.rooms[roomID] = make(map[*Client]bool)
-	}
-	h.rooms[roomID][cl] = true
+func (h *Hub) GetOnlineUsers(roomID uint) []uint {
+	resp := make(chan []uint, 1)
+	h.onlineUsersReq <- onlineUsersRequest{roomID: roomID, resp: resp}
+	return <-resp
 }
 
-func (h *Hub) Unregister(roomID string, cl *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	clients, ok := h.rooms[roomID]
-	if !ok {
-		return
-	}
-	delete(clients, cl)
-	if len(clients) == 0 {
-		delete(h.rooms, roomID)
+func (h *Hub) Run() {
+	for {
+		select {
+		case client := <-h.Register:
+			if h.rooms[client.RoomID] == nil {
+				h.rooms[client.RoomID] = make(map[*Client]bool)
+			}
+			h.rooms[client.RoomID][client] = true
+
+			if h.onlineUsers[client.RoomID] == nil {
+				h.onlineUsers[client.RoomID] = make(map[uint]int)
+			}
+			h.onlineUsers[client.RoomID][client.UserID]++
+
+			client.send <- marshalEvent(EventOnlineUsers, onlineUsersData{UserIDs: h.getOnlineUserIDs(client.RoomID)})
+
+			if h.onlineUsers[client.RoomID][client.UserID] == 1 {
+				h.broadcastToRoom(client.RoomID, marshalEvent(EventUserJoined, userStatusData{UserID: client.UserID}))
+			}
+
+		case client := <-h.Unregister:
+			if room := h.rooms[client.RoomID]; room != nil {
+				if _, ok := room[client]; ok {
+					delete(room, client)
+					close(client.send)
+
+					h.onlineUsers[client.RoomID][client.UserID]--
+
+					if h.onlineUsers[client.RoomID][client.UserID] == 0 {
+						delete(h.onlineUsers[client.RoomID], client.UserID)
+						h.broadcastToRoom(client.RoomID, marshalEvent(EventUserLeft, userStatusData{UserID: client.UserID}))
+					}
+				}
+			}
+
+		case msg := <-h.broadcast:
+			h.broadcastToRoom(msg.roomID, msg.payload)
+
+		case req := <-h.onlineUsersReq:
+			req.resp <- h.getOnlineUserIDs(req.roomID)
+		}
 	}
 }
 
-func (h *Hub) Count(roomID string) int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.rooms[roomID])
+func (h *Hub) broadcastToRoom(roomID uint, payload []byte) {
+	for client := range h.rooms[roomID] {
+		select {
+		case client.send <- payload:
+		default:
+			delete(h.rooms[roomID], client)
+			close(client.send)
+		}
+	}
 }
 
-func (h *Hub) Broadcast(roomID string, messageType int, data []byte) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for cl := range h.rooms[roomID] {
-		cl.Write(messageType, data)
+func (h *Hub) getOnlineUserIDs(roomID uint) []uint {
+	userIDs := make([]uint, 0, len(h.onlineUsers[roomID]))
+	for uid := range h.onlineUsers[roomID] {
+		userIDs = append(userIDs, uid)
 	}
+	return userIDs
 }

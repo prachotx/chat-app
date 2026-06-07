@@ -1,24 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"strconv"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/fasthttp/websocket"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
-	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/prachotx/real-time-chat/api/config"
-	"github.com/prachotx/real-time-chat/api/internal/dto"
 	"github.com/prachotx/real-time-chat/api/internal/handler"
 	"github.com/prachotx/real-time-chat/api/internal/middleware"
 	"github.com/prachotx/real-time-chat/api/internal/model"
 	"github.com/prachotx/real-time-chat/api/internal/repository"
 	"github.com/prachotx/real-time-chat/api/internal/service"
-	hub "github.com/prachotx/real-time-chat/api/internal/ws"
-	jwtpkg "github.com/prachotx/real-time-chat/api/pkg/jwt"
-	"github.com/valyala/fasthttp"
+	internalws "github.com/prachotx/real-time-chat/api/internal/ws"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -67,6 +65,10 @@ func main() {
 	messageService := service.NewMessageService(messageRepo)
 	messageHandler := handler.NewMessageHandler(messageService)
 
+	hub := internalws.NewHub()
+	go hub.Run()
+	wsHandler := handler.NewWsHandler(hub, messageService)
+
 	api := app.Group("/api")
 	{
 		auth := api.Group("/auth")
@@ -84,62 +86,28 @@ func main() {
 		}
 	}
 
-	upgrader := websocket.FastHTTPUpgrader{
-		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool { return true },
+	app.Get("/ws/:room_id", middleware.AuthMiddleware, wsHandler.Handle)
+
+	go func() {
+		if err := app.Listen(":" + cfg.Port); err != nil {
+			log.Printf("server stopped: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("shutting down...")
+
+	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
+		log.Fatalf("forced shutdown: %v", err)
 	}
 
-	h := hub.New()
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
 
-	app.Get("/ws/:roomId", func(c fiber.Ctx) error {
-		tokenString := c.Cookies("access_token")
-		if tokenString == "" {
-			return c.SendStatus(fiber.StatusUnauthorized)
-		}
-		token, err := jwtpkg.ValidateToken(tokenString)
-		if err != nil || !token.Valid {
-			return c.SendStatus(fiber.StatusUnauthorized)
-		}
-		claims := token.Claims.(gojwt.MapClaims)
-		userID := uint(claims["user_id"].(float64))
-
-		roomId := c.Params("roomId")
-		roomIdUint, err := strconv.ParseUint(roomId, 10, 64)
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		return upgrader.Upgrade(c.RequestCtx(), func(conn *websocket.Conn) {
-			cl := &hub.Client{Conn: conn, UserID: userID}
-			h.Register(roomId, cl)
-			fmt.Printf("Connected room=%s userID=%d total=%d\n", roomId, userID, h.Count(roomId))
-
-			defer func() {
-				h.Unregister(roomId, cl)
-				fmt.Printf("Disconnected room=%s userID=%d total=%d\n", roomId, userID, h.Count(roomId))
-			}()
-
-			for {
-				_, msg, err := conn.ReadMessage()
-				if err != nil {
-					break
-				}
-				var incoming hub.IncomingMessage
-				if err := json.Unmarshal(msg, &incoming); err != nil || incoming.Content == "" {
-					continue
-				}
-				saved, err := messageService.Save(dto.CreateMessageDto{Content: incoming.Content}, uint(roomIdUint), userID)
-				if err != nil {
-					fmt.Printf("save error: %v\n", err)
-					continue
-				}
-				event, err := hub.NewMessageEvent(saved)
-				if err != nil {
-					continue
-				}
-				h.Broadcast(roomId, websocket.TextMessage, event)
-			}
-		})
-	})
-
-	app.Listen(":" + cfg.Port)
+	log.Println("server exited cleanly")
 }
