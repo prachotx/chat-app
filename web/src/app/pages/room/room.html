@@ -3,14 +3,39 @@
   <!-- Navbar -->
   <header class="navbar bg-base-100 shadow-sm px-4">
     <div class="flex-1 gap-3">
-      <a routerLink="/rooms" class="btn btn-ghost btn-sm btn-circle" aria-label="Back to rooms">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-      </a>
-      <span class="font-bold text-lg">Room #{{ roomId }}</span>
+        <span class="font-bold text-lg">Room #{{ roomId }}</span>
+        @if (onlineUsers().length > 0) {
+          <span class="text-xs text-base-content/50 ml-1.5">· {{ onlineUsers().length }} online</span>
+        }
     </div>
-    <div class="flex-none">
+    <div class="flex-none flex items-center gap-3">
+      @if (onlineUsers().length > 0) {
+        <div
+          class="avatar-group -space-x-2"
+          [attr.aria-label]="onlineUsers().length + ' users online'"
+        >
+          @for (user of onlineUsers().slice(0, 3); track user.id) {
+            <div class="avatar avatar-placeholder tooltip tooltip-bottom" [attr.data-tip]="user.username">
+              <div
+                class="size-7 rounded-full text-xs font-semibold"
+                [class.bg-primary]="user.id === currentUserId()"
+                [class.text-primary-content]="user.id === currentUserId()"
+                [class.bg-neutral]="user.id !== currentUserId()"
+                [class.text-neutral-content]="user.id !== currentUserId()"
+              >
+                <span>{{ user.username[0].toUpperCase() }}</span>
+              </div>
+            </div>
+          }
+          @if (onlineUsers().length > 3) {
+            <div class="avatar avatar-placeholder">
+              <div class="size-7 rounded-full bg-base-300 text-base-content text-xs font-semibold">
+                <span>+{{ onlineUsers().length - 3 }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
       <div
         class="badge badge-sm gap-1"
         [class.badge-success]="isConnected()"

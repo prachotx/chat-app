@@ -51,6 +51,23 @@ export class RoomComponent implements OnInit, OnDestroy {
   readonly isLoadingHistory = signal(true);
   readonly currentUserId = computed(() => this.authService.currentUser()?.id);
 
+  readonly userMap = computed(() => {
+    const map = new Map<number, string>();
+    const me = this.authService.currentUser();
+    if (me) map.set(me.id, me.username);
+    for (const msg of this.messages()) {
+      if (!map.has(msg.sender_id)) map.set(msg.sender_id, msg.sender.username);
+    }
+    return map;
+  });
+
+  readonly onlineUsers = computed(() =>
+    this.onlineUserIds().map(id => ({
+      id,
+      username: this.userMap().get(id) ?? `User #${id}`,
+    }))
+  );
+
   draft = '';
 
   constructor() {
