@@ -55,7 +55,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 
 	authService := service.NewAuthService(userRepo)
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg)
 
 	roomRepo := repository.NewRoomRepository(db)
 	roomService := service.NewRoomService(roomRepo)
@@ -76,6 +76,7 @@ func main() {
 			auth.Post("/login", authHandler.Login)
 			auth.Post("/register", authHandler.Register)
 			auth.Get("/me", middleware.AuthMiddleware, authHandler.Profile)
+			auth.Get("/logout", middleware.AuthMiddleware, authHandler.Logout)
 		}
 		room := api.Group("/rooms")
 		{

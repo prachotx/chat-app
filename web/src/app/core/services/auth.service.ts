@@ -38,6 +38,8 @@ export class AuthService {
   }
 
   logout() {
-    this.currentUser.set(null);
+    return this.http.get<ApiResponse>('/api/auth/logout', { withCredentials: true }).pipe(
+      tap(() => this.currentUser.set(null)),
+    );
   }
 }

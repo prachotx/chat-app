@@ -17,6 +17,8 @@ type Config struct {
 	DBName     string
 
 	SecretKey string
+
+	AppEnv string
 }
 
 var cfg *Config
@@ -41,6 +43,8 @@ func Load() *Config {
 		DBName:     os.Getenv("DB_NAME"),
 
 		SecretKey: os.Getenv("SECRET_KEY"),
+
+		AppEnv: os.Getenv("APP_ENV"),
 	}
 
 	return cfg

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/prachotx/real-time-chat/api/config"
 	"github.com/prachotx/real-time-chat/api/internal/dto"
 	"github.com/prachotx/real-time-chat/api/internal/service"
 	"github.com/prachotx/real-time-chat/api/pkg/response"
@@ -13,10 +14,11 @@ import (
 
 type AuthHandler struct {
 	authService service.AuthService
+	cfg         *config.Config
 }
 
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
-	return &AuthHandler{authService}
+func NewAuthHandler(authService service.AuthService, cfg *config.Config) *AuthHandler {
+	return &AuthHandler{authService, cfg}
 }
 
 func (h *AuthHandler) Login(c fiber.Ctx) error {
@@ -35,8 +37,13 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		Value:    tokenString,
 		Expires:  time.Now().Add(24 * time.Hour),
 		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Lax",
+		Secure:   h.cfg.AppEnv == "production",
+		SameSite: func() string {
+			if h.cfg.AppEnv == "production" {
+				return fiber.CookieSameSiteNoneMode
+			}
+			return fiber.CookieSameSiteStrictMode
+		}(),
 	}
 
 	c.Cookie(&cookie)
@@ -70,4 +77,24 @@ func (h *AuthHandler) Profile(c fiber.Ctx) error {
 	}
 
 	return response.Send(c, fiber.StatusOK, "Profile found", profile)
+}
+
+func (h *AuthHandler) Logout(c fiber.Ctx) error {
+	cookie := fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: true,
+		Secure:   h.cfg.AppEnv == "production",
+		SameSite: func() string {
+			if h.cfg.AppEnv == "production" {
+				return fiber.CookieSameSiteNoneMode
+			}
+			return fiber.CookieSameSiteStrictMode
+		}(),
+	}
+
+	c.Cookie(&cookie)
+
+	return response.Send(c, fiber.StatusOK, "Logout successful", nil)
 }
