@@ -69,12 +69,12 @@ func main() {
 	go hub.Run()
 	wsHandler := handler.NewWsHandler(hub, messageService)
 
-	api := app.Group("/api")
+	api := app.Group("/api", middleware.RateLimitMiddleware)
 	{
 		auth := api.Group("/auth")
 		{
-			auth.Post("/login", authHandler.Login)
-			auth.Post("/register", authHandler.Register)
+			auth.Post("/login", middleware.AuthRateLimitMiddleware, authHandler.Login)
+			auth.Post("/register", middleware.AuthRateLimitMiddleware, authHandler.Register)
 			auth.Get("/me", middleware.AuthMiddleware, authHandler.Profile)
 			auth.Get("/logout", middleware.AuthMiddleware, authHandler.Logout)
 		}
