@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/prachotx/real-time-chat/api/internal/dto"
-	"github.com/prachotx/real-time-chat/api/internal/model"
-	"github.com/prachotx/real-time-chat/api/internal/repository"
+	"github.com/prachotx/chat-app/api/internal/dto"
+	"github.com/prachotx/chat-app/api/internal/model"
+	"github.com/prachotx/chat-app/api/internal/repository"
 )
 
 type RoomService interface {

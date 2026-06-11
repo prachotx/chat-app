@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/prachotx/real-time-chat/api/internal/dto"
-	"github.com/prachotx/real-time-chat/api/internal/model"
-	"github.com/prachotx/real-time-chat/api/internal/repository"
-	"github.com/prachotx/real-time-chat/api/pkg/crypto"
-	"github.com/prachotx/real-time-chat/api/pkg/jwt"
+	"github.com/prachotx/chat-app/api/internal/dto"
+	"github.com/prachotx/chat-app/api/internal/model"
+	"github.com/prachotx/chat-app/api/internal/repository"
+	"github.com/prachotx/chat-app/api/pkg/crypto"
+	"github.com/prachotx/chat-app/api/pkg/jwt"
 )
 
 type AuthService interface {

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/prachotx/real-time-chat/api/config"
+	"github.com/prachotx/chat-app/api/config"
 )
 
 func getSecret() []byte {

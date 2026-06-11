@@ -3,8 +3,8 @@ package middleware
 import (
 	"github.com/gofiber/fiber/v3"
 	gojwt "github.com/golang-jwt/jwt/v5"
-	"github.com/prachotx/real-time-chat/api/pkg/jwt"
-	"github.com/prachotx/real-time-chat/api/pkg/response"
+	"github.com/prachotx/chat-app/api/pkg/jwt"
+	"github.com/prachotx/chat-app/api/pkg/response"
 )
 
 func AuthMiddleware(c fiber.Ctx) error {

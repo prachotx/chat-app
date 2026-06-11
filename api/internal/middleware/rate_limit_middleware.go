@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
-	"github.com/prachotx/real-time-chat/api/pkg/response"
+	"github.com/prachotx/chat-app/api/pkg/response"
 )
 
 var RateLimitMiddleware = limiter.New(limiter.Config{
@@ -16,7 +16,6 @@ var RateLimitMiddleware = limiter.New(limiter.Config{
 	},
 })
 
-// AuthRateLimitMiddleware is a stricter rate limiter for login/register endpoints.
 var AuthRateLimitMiddleware = limiter.New(limiter.Config{
 	Max:        10,
 	Expiration: 1 * time.Minute,

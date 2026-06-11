@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/prachotx/real-time-chat/api/internal/dto"
-	"github.com/prachotx/real-time-chat/api/internal/service"
-	"github.com/prachotx/real-time-chat/api/pkg/response"
+	"github.com/prachotx/chat-app/api/internal/dto"
+	"github.com/prachotx/chat-app/api/internal/service"
+	"github.com/prachotx/chat-app/api/pkg/response"
 	"gorm.io/gorm"
 )
 

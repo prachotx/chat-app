@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/prachotx/real-time-chat/api/internal/model"
+	"github.com/prachotx/chat-app/api/internal/model"
 	"gorm.io/gorm"
 )
 

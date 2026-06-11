@@ -1,4 +1,4 @@
-module github.com/prachotx/real-time-chat/api
+module github.com/prachotx/chat-app/api
 
 go 1.26.3
 
