@@ -89,7 +89,7 @@ Root `.env` controls Docker container names and exposed ports:
 | `API_PORT`           | `3000`               |
 | `WEB_PORT`           | `4200`               |
 | `PGADMIN_PORT`       | `5050`               |
-| `POSTGRES_DATABASE`  | `real_time_chat_db`  |
+| `POSTGRES_DATABASE`  | `chat_app_db`  |
 | `POSTGRES_USER`      | `user`               |
 | `POSTGRES_PASSWORD`  | `password`           |
 
