@@ -5,6 +5,8 @@ services:
       context: ./api
       dockerfile: Dockerfile.prod
     restart: unless-stopped
+    ports:
+      - "${API_PORT}:3000"
     env_file:
       - ./api/.env
     networks:
@@ -34,6 +36,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DATABASE}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     networks:
