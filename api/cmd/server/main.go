@@ -2,11 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
@@ -89,26 +84,5 @@ func main() {
 
 	app.Get("/ws/:room_id", middleware.AuthMiddleware, wsHandler.Handle)
 
-	go func() {
-		if err := app.Listen(":" + cfg.Port); err != nil {
-			log.Printf("server stopped: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("shutting down...")
-
-	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
-		log.Fatalf("forced shutdown: %v", err)
-	}
-
-	sqlDB, err := db.DB()
-	if err == nil {
-		sqlDB.Close()
-	}
-
-	log.Println("server exited cleanly")
+	app.Listen(":" + cfg.Port)
 }
